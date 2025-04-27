@@ -4,7 +4,15 @@ import bcrypt from "bcrypt"
 
 const userSchema = new Schema(
     {
-        name: {
+        username: {
+            type: String,
+            required: true,
+            unique: true,
+            lowercase: true,
+            trim: true, 
+            index: true
+        },
+        fullName: {
             type: String,
             required: true,
             trim: true, 
@@ -62,7 +70,7 @@ userSchema.methods.generateAccessToken = function(){
         {
             _id: this._id,
             email: this.email,
-            name: this.name,
+            name: this.username,
         },
         process.env.ACCESS_TOKEN_SECRET,
         {
