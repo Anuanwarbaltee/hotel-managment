@@ -1,1 +1,1 @@
-export const DB_Name = "databaseName"
+export const DB_Name = "Hotel-Management"

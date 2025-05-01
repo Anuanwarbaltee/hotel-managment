@@ -1,13 +1,14 @@
-import { User } from "../models/user.model";
-import { ApiError } from "../utils/ApiErrors";
-import { ApiResponse } from "../utils/ApiResponse";
-import asyncHandler from "../utils/asynchandler";
+import  {User}  from "../models/user.model.js";
+import  {ApiError}  from "../utils/ApiErrors.js";
+import  {ApiResponse}  from "../utils/ApiResponse.js";
+import asyncHandler from "../utils/asynchandler.js";
+import { UploadonCloudinary } from "../utils/cloudinary.js";
 
 const generateAccessAndRefreshTokens  = async (userId) => {
     try {
         const user = await User.findById(userId);
-         const  accessToken =  user.generateAccessToken();
-         const refreshToken  = user.generateRefreshToken();
+         const  accessToken = user.generateAccessToken();
+         const refreshToken  =  user.generateRefreshToken();
          user.refreshToken = refreshToken;
          await user.save({validateBeforeSave:false})
          return {accessToken, refreshToken} 
@@ -34,8 +35,8 @@ const registerUser = asyncHandler(async (req,res)=>{
 
    let avatarUrl = ""; 
 
-   if (req?.files?.avatar?.[0]?.path) {
-     const avatarUploadResult = await UploadonCloudinary(req.files.avatar[0].path);
+   if (avatarLocalPath) {
+     const avatarUploadResult = await UploadonCloudinary(avatarLocalPath);
      avatarUrl = avatarUploadResult?.url || "";
    }
 
@@ -124,7 +125,6 @@ const logoutUser = asyncHandler(async (req, res) => {
     const options = {
         httpOnly: true,
         secure: true,
-        expires: new Date(0), // Immediately expire
     };
 
     return res
