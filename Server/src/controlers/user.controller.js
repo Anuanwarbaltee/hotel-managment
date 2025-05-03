@@ -184,4 +184,77 @@ const refreshAccessToken = asyncHandler(async (req, res) => {
 
 })
 
-export {registerUser, loginUser ,logoutUser , refreshAccessToken };
+const changePassword = asyncHandler(async(req,res) =>{
+    const {oldPassword,newPassword,userId}= req.body;
+    if(!oldPassword && !newPassword){
+        throw new ApiError(400,"New password or Old password is required.")
+    }
+
+    const user = await User.findById(req?.user?._id || userId)
+
+    if (!user) {
+        throw new ApiError(404, "User not found.");
+    }
+    
+    const isCorrectPassword = await user.isPasswordCorrect(oldPassword)
+
+    if(!isCorrectPassword){
+        throw new ApiError(400,"Invalid Old Password.")
+    }
+
+    user.password = newPassword
+
+    await user.save({validateBeforeSave:false})
+
+    res.status(200)
+    .json(new ApiResponse(200,{},"Password changed successfully."))
+
+})
+
+const updateUser = asyncHandler(async(req,res)=>{
+    const {fullName, username, phone, email,role,userId} = req.body;
+    if([username,phone,email,fullName,role].some(field => field?.trim() === "")){
+     throw new ApiError(400,"All fields are required.")
+    }
+
+    const localfilePath = req?.files?.avatar?.[0].path;
+    let avatarUrl = '';
+
+    if(localfilePath){
+        const uploadedResultPath = await UploadonCloudinary(localfilePath)
+        avatarUrl = uploadedResultPath?.url
+    }
+
+
+    const updateData = {
+        username,
+        phone,
+        email,
+        fullName,
+        role,
+      };
+      
+      if (avatarUrl) {
+        updateData.avatarUrl = avatarUrl;
+      }
+
+
+    const user = await User.findByIdAndUpdate(req?.user?._id || userId,{
+        $set:updateData,
+    },
+    {
+        new:true
+    }
+).select('-password')
+
+if(!user){
+    throw new ApiError(500,"Something went wrong while updating User.")
+}
+res.status(200)
+.json(
+    new ApiResponse(200, user , "User updated successfully.")
+)
+
+})
+
+export {registerUser, loginUser ,logoutUser , refreshAccessToken,changePassword,updateUser};
