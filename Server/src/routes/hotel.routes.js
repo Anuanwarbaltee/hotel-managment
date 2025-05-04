@@ -1,17 +1,19 @@
 import { Router } from "express";
 import { verifyJWT } from "../midleware/auth.midleware.js";
 import { upload } from "../midleware/multer.mildleware.js";
-import { addHotel, uploadFiles } from "../controlers/hotel.controller.js";
+import { addHotel, deleteHotel, updateHotel, uploadFiles } from "../controlers/hotel.controller.js";
 
 const router = Router();
 
-router.route("/upload-files").post(verifyJWT,upload.fields([
+router.route("/upload-files").post(verifyJWT, upload.fields([
     {
-        name:"images",
+        name: "images",
     },
 ]),
-uploadFiles)
+    uploadFiles)
 
-router.route("/add").post(verifyJWT,addHotel)
+router.route("/add").post(verifyJWT, addHotel)
+router.route("/update/:id").patch(verifyJWT, updateHotel)
+router.route("/delete/:id").delete(verifyJWT, deleteHotel)
 
 export default router
