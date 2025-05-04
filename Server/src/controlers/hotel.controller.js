@@ -4,6 +4,26 @@ import { ApiResponse } from "../utils/ApiResponse.js";
 import asyncHandler from "../utils/asynchandler.js";
 import { UploadonCloudinary } from "../utils/cloudinary.js";
 
+
+const getHotel = asyncHandler(async (req, res) => {
+  const id = req.params.id;
+  if (id != 1) {
+    const hotel = await Hotel.findById(id);
+    if (!hotel) {
+      throw new ApiError(404, "Hotel not found");
+    }
+    return res.status(200).json(
+      new ApiResponse(200, hotel, "Hotel retrieved successfully")
+    );
+  } else {
+    const hotels = await Hotel.find({});
+    return res.status(200).json(
+      new ApiResponse(200, hotels, "All hotels retrieved successfully")
+    );
+  }
+});
+
+
 const deleteHotel = asyncHandler(async (req, res) => {
   const { id } = req.params;
   if (!id) {
@@ -99,4 +119,4 @@ const uploadFiles = asyncHandler(async (req, res) => {
     new ApiResponse(200, imageUrls, "Images uploaded successfully."));
 })
 
-export { addHotel, updateHotel, uploadFiles, deleteHotel }
+export { addHotel, updateHotel, uploadFiles, deleteHotel, getHotel }
