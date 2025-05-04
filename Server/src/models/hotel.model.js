@@ -6,8 +6,19 @@ const hotelSchema = new Schema({
     required: true,
   },
   location: {
-    type: String,
-    required: true,
+    type: {
+      type: String,
+      enum: ['Point'], // Required for GeoJSON
+      default: 'Point'
+    },
+    coordinates: {
+      type: [Number], 
+      required: true,
+    },
+    address: {
+      type: String,
+      required: true,
+    }
   },
   description: {
     type: String,
@@ -25,12 +36,19 @@ const hotelSchema = new Schema({
   },
   amenities: [
     {
-      type: String,
+      name: {
+        type: String,
+        required: true
+      }
     }
-  ],
-  rating: {
+  ],  
+  averageRating: { 
     type: Number,
     default: 0 
+  },
+  reviewCount:{ 
+   type: Number,
+   default: 0 
   }
 },
 {
