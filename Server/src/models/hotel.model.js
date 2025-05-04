@@ -12,10 +12,22 @@ const hotelSchema = new Schema({
       default: 'Point'
     },
     coordinates: {
-      type: [Number], 
+      type: [Number],
       required: true,
     },
-    address: {
+    country: {
+      type: String,
+      required: true,
+    },
+    city: {
+      type: String,
+      required: true,
+    },
+    state: {
+      type: String,
+      required: true,
+    },
+    zipCode: {
       type: String,
       required: true,
     }
@@ -26,12 +38,12 @@ const hotelSchema = new Schema({
   },
   images: [
     {
-      type: String, 
+      type: String,
     }
   ],
   owner: {
     type: Schema.Types.ObjectId,
-    ref: "User", 
+    ref: "User",
     required: true
   },
   amenities: [
@@ -41,19 +53,19 @@ const hotelSchema = new Schema({
         required: true
       }
     }
-  ],  
-  averageRating: { 
+  ],
+  averageRating: {
     type: Number,
-    default: 0 
+    default: 0
   },
-  reviewCount:{ 
-   type: Number,
-   default: 0 
+  reviewCount: {
+    type: Number,
+    default: 0
   }
 },
-{
-  timestamps: true
-});
+  {
+    timestamps: true
+  });
 
 const Hotel = mongoose.model("Hotel", hotelSchema);
 
