@@ -10,7 +10,7 @@ const createBooking = asyncHandler(async(req, res)=>{
     const {userId, roomId,hotelId, guests,checkInDate,checkOutDate} = req.body;
 
       if (![guests, checkInDate, checkOutDate].every(item => item)) {
-    throw new ApiError(400, "All fields are required.");
+        throw new ApiError(400, "All fields are required.");
   }
 
     if (!userId || !mongoose.Types.ObjectId.isValid(userId)) {
