@@ -1,9 +1,10 @@
 import { Box } from '@mui/material'
+import Router from './Shell/Routes/Routes'
 
 function App() {
   return (
-    <Box sx={{ display: "flex", justifyContent: "center", alignItems: "center", height: "100vh", }}>
-      <h3>Well come</h3>
+    <Box >
+      <Router />
     </Box>
   )
 }

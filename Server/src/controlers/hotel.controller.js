@@ -1,4 +1,6 @@
+import Booking from "../models/booking.model.js";
 import Hotel from "../models/hotel.model.js";
+import Room from "../models/room.model.js";
 import { ApiError } from "../utils/ApiErrors.js";
 import { ApiResponse } from "../utils/ApiResponse.js";
 import asyncHandler from "../utils/asynchandler.js";
@@ -22,6 +24,85 @@ const getHotel = asyncHandler(async (req, res) => {
     );
   }
 });
+
+const getAllHotels = asyncHandler(async (req, res) => {
+  const { location, checkIn, checkOut } = req.query;
+
+  const checkInDate = new Date(checkIn);
+  const checkOutDate = new Date(checkOut);
+
+  if (isNaN(checkInDate) || isNaN(checkOutDate)) {
+    const hotels = await Hotel.find({});
+    return res.status(200).json(
+      new ApiResponse(200, hotels, "All hotels retrieved successfully")
+    );
+  }
+
+  // 1. Find overlapping bookings
+  const bookings = await Booking.find({
+    checkInDate: { $lt: checkOutDate },
+    checkOutDate: { $gt: checkInDate },
+    status: { $ne: "cancelled" },
+  }).populate("room hotel");
+
+  // 2. Map booked rooms by hotel
+  const bookedRoomMap = {};
+
+  bookings?.forEach((booking) => {
+    const hotelId = booking.hotel?._id?.toString();
+    const roomId = booking.room?._id?.toString();
+
+    if (!hotelId || !roomId) return;
+
+    if (!bookedRoomMap[hotelId]) {
+      bookedRoomMap[hotelId] = new Set();
+    }
+
+    bookedRoomMap[hotelId].add(roomId);
+  });
+
+  // 3. Build location filter query
+  let query = {};
+
+  if (location) {
+    const regex = new RegExp(location, "i");
+    query = {
+      $or: [
+        { "location.city": regex },
+        { "location.state": regex },
+        { "location.zipCode": regex },
+        { "location.country": regex },
+      ],
+    };
+  }
+
+  // 4. Fetch hotels matching location
+  const allHotels = await Hotel.find(query);
+
+  // 5. Filter hotels with available rooms (optimized)
+  const hotelPromises = allHotels.map(async (hotel) => {
+    const hotelId = hotel._id.toString();
+
+    const hotelsRooms = await Room.find({ hotel: hotelId });
+
+    const bookedRooms = bookedRoomMap[hotelId] || new Set();
+
+    const availableRooms = hotelsRooms.filter(
+      (room) => !bookedRooms.has(room._id.toString())
+    );
+
+    return availableRooms.length > 0 ? hotel : null;
+  });
+
+  const hotelResults = await Promise.all(hotelPromises);
+  const availableHotels = hotelResults.filter(Boolean);
+
+  // 6. Return results
+  res
+    .status(200)
+    .json(new ApiResponse(200, availableHotels, "Hotels fetched successfully."));
+});
+
 
 
 const deleteHotel = asyncHandler(async (req, res) => {
@@ -119,4 +200,4 @@ const uploadFiles = asyncHandler(async (req, res) => {
     new ApiResponse(200, imageUrls, "Images uploaded successfully."));
 })
 
-export { addHotel, updateHotel, uploadFiles, deleteHotel, getHotel }
+export { addHotel, updateHotel, uploadFiles, deleteHotel, getHotel , getAllHotels }
