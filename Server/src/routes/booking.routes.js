@@ -4,7 +4,7 @@ import { verifyJWT } from "../midleware/auth.midleware.js";
 
 const router = Router()
 
-router.route('/add').post(verifyJWT, createBooking)
+router.route('/create').post( createBooking)
 router.route('/:id').patch(verifyJWT, updateBooking)
 router.route('/:id').get(verifyJWT, getHotelBookings)
 router.route('/').get(verifyJWT, getAllBookings)

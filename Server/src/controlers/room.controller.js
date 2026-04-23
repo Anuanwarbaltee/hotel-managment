@@ -33,15 +33,15 @@ const addRoom = asyncHandler(async (req, res) => {
   });
 
   const getRoom = asyncHandler(async (req, res) => {
-    const roomId = req.params.id;
+    const hotel_id = req.params.id;
     const { checkIn, checkOut, capacity ,price} = req.query;
-  
-    if (!roomId || !mongoose.Types.ObjectId.isValid(roomId)) {
+    
+    if (!hotel_id || !mongoose.Types.ObjectId.isValid(hotel_id)) {
       throw new ApiError(400, "Valid Room ID is required");
     }
   
     const matchStage = {
-      room: new mongoose.Types.ObjectId(roomId),
+      hotel: new mongoose.Types.ObjectId(hotel_id),
     };
   
     if (capacity) {
@@ -63,34 +63,30 @@ const addRoom = asyncHandler(async (req, res) => {
         },
       },
       {
-        $addFields: {
-          isAvailable: {
-            $cond: {
-              if: {
-                $gt: [
-                  {
-                    $size: {
-                      $filter: {
-                        input: "$bookings",
-                        as: "booking",
-                        cond: {
-                          $and: [
-                            checkIn ? { $lt: ["$$booking.checkIn", new Date(checkOut)] } : true,
-                            checkOut ? { $gt: ["$$booking.checkOut", new Date(checkIn)] } : true,
-                          ],
-                        },
-                      },
-                    },
+  $addFields: {
+    isAvailable: checkIn && checkOut
+      ? {
+          $eq: [
+            {
+              $size: {
+                $filter: {
+                  input: "$bookings",
+                  as: "booking",
+                  cond: {
+                    $and: [
+                      { $lt: ["$$booking.checkInDate", new Date(checkOut)] },
+                      { $gt: ["$$booking.checkOutDate", new Date(checkIn)] },
+                    ],
                   },
-                  0,
-                ],
+                },
               },
-              then: false,
-              else: true,
             },
-          },
-        },
-      },
+            0,
+          ],
+        }
+      : true,
+  },
+},
       {
         $lookup: {
           from: "hotels",
@@ -138,6 +134,82 @@ const addRoom = asyncHandler(async (req, res) => {
     return res
       .status(200)
       .json(new ApiResponse(200, rooms, "Room fetched Successfully."));
+  });
+
+   const getRoomById = asyncHandler(async (req, res) => {
+    const room_id = req.params.id;
+    const { checkIn, checkOut, capacity ,price} = req.query;
+
+    if (!room_id || !mongoose.Types.ObjectId.isValid(room_id)) {
+      throw new ApiError(400, "Valid Room ID is required");
+    }
+  
+    const matchStage = {
+      _id: new mongoose.Types.ObjectId(room_id),
+    };
+  
+    if (capacity) {
+      matchStage.capacity = { $gte: parseInt(capacity) };
+    }
+
+    if(price){
+      matchStage.price = { $gte: parseInt(price) };
+    }
+  
+    const pipeline = [
+      { $match: matchStage },
+      {
+  $addFields: {
+    isAvailable: checkIn && checkOut
+      ? {
+          $eq: [
+            {
+              $size: {
+                $filter: {
+                  input: "$bookings",
+                  as: "booking",
+                  cond: {
+                    $and: [
+                      { $lt: ["$$booking.checkInDate", new Date(checkOut)] },
+                      { $gt: ["$$booking.checkOutDate", new Date(checkIn)] },
+                    ],
+                  },
+                },
+              },
+            },
+            0,
+          ],
+        }
+      : true,
+  },
+},
+      {
+        $lookup: {
+          from: "hotels",
+          localField: "hotel",
+          foreignField: "_id",
+          as: "hotelDetails",
+          pipeline: [
+            {
+              $project: {
+                name: 1,
+                location: 1,
+                amenities: 1,
+                owner: 1,
+              },
+            },
+          ],
+        },
+      },
+      { $unwind: "$hotelDetails" },
+    ];
+  
+    const rooms = await Room.aggregate(pipeline);
+    const room = rooms.length > 0 ? rooms[0] : null;
+  
+    return res
+      .status(200)
+      .json(new ApiResponse(200, room, "Room fetched Successfully."));
   });
 
   const getHotelRooms = asyncHandler(async (req, res) => {
@@ -364,4 +436,4 @@ const addRoom = asyncHandler(async (req, res) => {
       )
   })
 
-export { addRoom ,updateRoom, getRoom , deleteRoom ,getHotelRooms, getAllRooms}
+export { addRoom ,updateRoom, getRoom , deleteRoom ,getHotelRooms, getAllRooms , getRoomById}

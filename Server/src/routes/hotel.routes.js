@@ -9,13 +9,12 @@ router.route("/upload-files").post(verifyJWT, upload.fields([
     {
         name: "images",
     },
-]),
-    uploadFiles)
+]),uploadFiles)
 
 router.route("/add").post(verifyJWT, addHotel)
 router.route("/update/:id").patch(verifyJWT, updateHotel)
 router.route("/delete/:id").delete(verifyJWT, deleteHotel)
-router.route("/get/:id").get(verifyJWT, getHotel)
-router.route("/hotels").get(verifyJWT, getAllHotels)
+router.route("/get/:id").get( getHotel)
+router.route("/hotels").get(getAllHotels)
 
 export default router

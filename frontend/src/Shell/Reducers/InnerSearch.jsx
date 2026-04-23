@@ -21,4 +21,24 @@ const searchSlice = createSlice({
 })
 
 export const { addFilters } = searchSlice.actions;
-export default searchSlice.reducer
+// export default searchSlice.reducer
+
+const counterReducer = createSlice({
+    name: "count",
+    initialState: { value: 0, name: "ali", age: 20 },
+    reducers: {
+        increment: (state) => {
+            state.value += 1
+            state.name = "Anu"
+            state.age = 29
+        },
+        decrement: (state) => {
+            state.value -= 1
+            state.name = "zahoor"
+            state.age = 26
+        }
+    }
+})
+
+export const { increment, decrement } = counterReducer.actions;
+export default counterReducer.reducer

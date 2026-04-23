@@ -3,51 +3,219 @@ import Booking from "../models/booking.model.js";
 import { ApiResponse } from "../utils/ApiResponse.js";
 import asyncHandler from "../utils/asynchandler.js";
 import { ApiError } from "../utils/ApiErrors.js";
+import { sendEmail } from "../utils/sendEmail.js";
+import { bookingPendingTemplate } from "../email/template/bookingPendingTemplate.js";
+import Hotel from "../models/hotel.model.js";
+import { newBookingRequestTemplate } from "../email/template/newBookingRequestTemplate.js";
 
 
-const createBooking = asyncHandler(async(req, res)=>{
+// const createBooking = asyncHandler(async(req, res)=>{
 
-    const {userId, roomId,hotelId, guests,checkInDate,checkOutDate} = req.body;
+//     const {userId, roomId,hotelId, guests,checkInDate,checkOutDate} = req.body;
 
-      if (![guests, checkInDate, checkOutDate].every(item => item)) {
-        throw new ApiError(400, "All fields are required.");
+//       if (![guests, checkInDate, checkOutDate].every(item => item)) {
+//         throw new ApiError(400, "All fields are required.");
+//   }
+
+//     if (!userId || !mongoose.Types.ObjectId.isValid(userId)) {
+//         throw new ApiError(400, "Valid user ID is required");
+//     }
+
+//     if (!hotelId || !mongoose.Types.ObjectId.isValid(hotelId)) {
+//         throw new ApiError(400, "Valid hotel ID is required");
+//     }
+
+//     if (!roomId || !mongoose.Types.ObjectId.isValid(roomId)) {
+//         throw new ApiError(400, "Valid room ID is required");
+//     }
+
+//     const isRoomAvaible = await Booking.find(
+//         {
+//          room : roomId,
+//          checkInDate:{$lt: checkOutDate},
+//          checkOutDate:{$gt:checkInDate}
+//         }
+//     )
+
+//     if(isRoomAvaible?.length > 0){
+//         throw new ApiError(409,"The room is already booked for the selected dates.")
+//     }
+
+//     const booking = await Booking.create({
+//         user: userId,
+//         room: roomId,
+//         hotel: hotelId,
+//         checkInDate,
+//         checkOutDate,
+//         guests,
+//     })
+
+//     return res.status(201).json(new ApiResponse(201, booking , "Booking created successfully"))
+// })
+
+
+
+// 🔑 Generate Booking ID + PIN
+
+const generateBookingId = () => {
+  return "BK" + Math.floor(10000000 + Math.random() * 90000000); 
+};
+
+const generatePin = () => {
+  return Math.floor(1000 + Math.random() * 9000).toString(); 
+};
+
+const createBooking = asyncHandler(async (req, res) => {
+  const {
+    userId,
+    roomId,
+    hotelId,
+    guests,
+    checkInDate,
+    checkOutDate,
+    name,
+    email,
+    phone
+  } = req.body;
+
+  
+  if (![guests, checkInDate, checkOutDate].every(Boolean)) {
+    throw new ApiError(400, "Guests, check-in and check-out are required");
   }
 
-    if (!userId || !mongoose.Types.ObjectId.isValid(userId)) {
-        throw new ApiError(400, "Valid user ID is required");
+  
+  const today = new Date();
+  const checkIn = new Date(checkInDate);
+  const checkOut = new Date(checkOutDate);
+
+  if (checkIn < today) {
+    throw new ApiError(400, "Check-in cannot be in the past");
+  }
+
+  if (checkOut <= checkIn) {
+    throw new ApiError(400, "Check-out must be after check-in");
+  }
+
+  // Validate IDs
+  if (!hotelId || !mongoose.Types.ObjectId.isValid(hotelId)) {
+    throw new ApiError(400, "Valid hotel ID is required");
+  }
+
+  if (!roomId || !mongoose.Types.ObjectId.isValid(roomId)) {
+    throw new ApiError(400, "Valid room ID is required");
+  }
+
+  // Detect user type
+  const isLoggedIn = userId && mongoose.Types.ObjectId.isValid(userId);
+  // const hotel = await Hotel.findById(hotelId);
+
+  if (!isLoggedIn) {
+    if (!name || !email || !phone) {
+      throw new ApiError(400, "Guest details are required");
     }
+  }
 
-    if (!hotelId || !mongoose.Types.ObjectId.isValid(hotelId)) {
-        throw new ApiError(400, "Valid hotel ID is required");
+
+  const overlappingBooking = await Booking.findOne({
+    room: roomId,
+    status: "confirmed",
+    // _id: { $ne: booking._id },
+    checkInDate: { $lt: checkOut },
+    checkOutDate: { $gt: checkIn }
+  });
+
+  if (overlappingBooking) {
+    throw new ApiError(409, "Room already booked for selected dates");
+  }
+
+ 
+  const bookingId = generateBookingId();
+  const pin = generatePin();
+
+  // Create booking object
+  const bookingData = {
+    hotel: hotelId,
+    room: roomId,
+    checkInDate: checkIn,
+    checkOutDate: checkOut,
+    guests,
+    bookingId,
+    pin,
+    status: "pending"
+  };
+
+  if (isLoggedIn) {
+    bookingData.user = userId;
+  } else {
+    bookingData.name = name;
+    bookingData.email = email;
+    bookingData.phone = phone;
+  }
+
+  const booking = await Booking.create(bookingData);
+
+   const bookingDetails = await Booking.aggregate([
+    {
+      $match: { _id: booking._id }
+    },
+    {
+      $lookup: {
+        from: "hotels",
+        localField: "hotel",
+        foreignField: "_id",
+        as: "hotel"
+      }
+    },
+    { $unwind: "$hotel" },
+    {
+      $lookup: {
+        from: "rooms",
+        localField: "room",
+        foreignField: "_id",
+        as: "room"
+      }
+    },
+    { $unwind: "$room" },
+    {
+      $project: {
+        bookingId: 1,
+        pin: 1,
+        name: 1,
+        email: 1,
+        phone: 1,
+        guests: 1,
+        checkInDate: 1,
+        checkOutDate: 1,
+        status: 1,
+        "hotel.name": 1,
+        "room.roomType": 1,
+      }
     }
+  ]);
 
-    if (!roomId || !mongoose.Types.ObjectId.isValid(roomId)) {
-        throw new ApiError(400, "Valid room ID is required");
-    }
+  const finalBooking = bookingDetails[0];
+ 
+  try {
 
-    const isRoomAvaible = await Booking.find(
-        {
-         room : roomId,
-         checkInDate:{$lt: checkOutDate},
-         checkOutDate:{$gt:checkInDate}
-        }
-    )
+   await sendEmail({
+      to: bookingData.email,
+      subject: "Booking Request Received",
+      html: bookingPendingTemplate(finalBooking),
+    });
 
-    if(isRoomAvaible?.length > 0){
-        throw new ApiError(409,"The room is already booked for the selected dates.")
-    }
+    await sendEmail({
+      to: "anwardines786@gmail.com",
+      subject: "New Booking Request",
+      html: newBookingRequestTemplate(finalBooking),
+    });
+  }catch (error) {
+      console.error("Email failed:", error.message);
+  }
+  return res.status(201).json(
+    new ApiResponse(201, finalBooking, "Booking created successfully")
+  );
+});
 
-    const booking = await Booking.create({
-        user: userId,
-        room: roomId,
-        hotel: hotelId,
-        checkInDate,
-        checkOutDate,
-        guests,
-    })
-
-    return res.status(201).json(new ApiResponse(201, booking , "Booking created successfully"))
-})
 
 const updateBooking = asyncHandler(async (req, res) => {
   const bookingId = req.params.id;

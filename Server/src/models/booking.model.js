@@ -4,7 +4,19 @@ const bookingSchema = new Schema({
   user: {  
     type: Schema.Types.ObjectId,
     ref: "User", 
-    required: true
+    default: null
+  },
+  name:{
+      type: String,
+      required: true
+  },
+  email:{
+      type: String,
+      required: true,
+  },
+  phone:{
+      type: String,
+      required: true
   },
   hotel: {  
     type: Schema.Types.ObjectId,
@@ -40,6 +52,14 @@ const bookingSchema = new Schema({
     enum: ["pending", "paid", "failed"], 
     default: "pending"
   },
+    bookingId: {
+      type: String,
+      unique: true,
+      index: true
+    },
+    pin: {
+      type: String
+    },
 },
 {
   timestamps: true

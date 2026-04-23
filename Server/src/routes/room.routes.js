@@ -1,13 +1,14 @@
 import { Router } from "express";
 import { verifyJWT } from "../midleware/auth.midleware.js";
-import {  addRoom ,updateRoom, getRoom , deleteRoom, getAllRooms, getHotelRooms } from "../controlers/room.controller.js";
+import {  addRoom ,updateRoom, getRoom , deleteRoom, getAllRooms, getHotelRooms, getRoomById } from "../controlers/room.controller.js";
 
 const router = Router();
 
 router.route('/add').post(verifyJWT,addRoom)
 router.route("/details").get(verifyJWT, getAllRooms)
 router.route("/hotel-rooms/:id").get(verifyJWT, getHotelRooms)
-router.route("/detail/:id").get(verifyJWT, getRoom)
+router.route("/detail/:id").get( getRoom)
+router.route("/:id").get( getRoomById)
 router.route("/update/:id").patch(verifyJWT, updateRoom)
 router.route("/delete/:id").delete(verifyJWT, deleteRoom)
 

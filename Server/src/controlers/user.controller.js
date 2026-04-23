@@ -3,6 +3,7 @@ import  {ApiError}  from "../utils/ApiErrors.js";
 import  {ApiResponse}  from "../utils/ApiResponse.js";
 import asyncHandler from "../utils/asynchandler.js";
 import { UploadonCloudinary } from "../utils/cloudinary.js";
+import jwt from 'jsonwebtoken';
 
 const generateAccessAndRefreshTokens  = async (userId) => {
     try {
@@ -37,7 +38,7 @@ const registerUser = asyncHandler(async (req,res)=>{
 
    if (avatarLocalPath) {
      const avatarUploadResult = await UploadonCloudinary(avatarLocalPath);
-     avatarUrl = avatarUploadResult?.url || "";
+     avatarUrl = avatarUploadResult.url || "";
    }
 
    const user = await User.create(
@@ -65,6 +66,7 @@ const registerUser = asyncHandler(async (req,res)=>{
 
 const loginUser = asyncHandler(async(req, res)=>{
     const {username, email, password} = req.body;
+    console.log("username", username, "email", email , "password", password)
     if(!username && !email){
         throw new ApiError(400, "UserName or Email is required.")
     }
@@ -74,7 +76,7 @@ const loginUser = asyncHandler(async(req, res)=>{
     }
 
     const user = await User.findOne({
-        $or:[{username}, {email}]
+        $or:[{username:email}, {email:email}]
     })
 
     if(!user){
@@ -93,13 +95,14 @@ const loginUser = asyncHandler(async(req, res)=>{
 
     const option ={
         httpOnly:true,
-        secure:true,
+        secure:false, // for local
+        sameSite: "lax",
     }
 
     return res.status(200)
     .cookie("accessToken", accessToken, option)
     .cookie("refreshToken", refreshToken, option)
-    .json(new ApiResponse(200, loginUser, "User login successfully."))
+    .json(new ApiResponse(200, {user:loginUser, accessToken , refreshToken}, "User login successfully."))
 })
 
 const logoutUser = asyncHandler(async (req, res) => {
@@ -137,7 +140,7 @@ const logoutUser = asyncHandler(async (req, res) => {
 
 const refreshAccessToken = asyncHandler(async (req, res) => {
     const incomingRefreshToken = req.cookies.refreshToken || req.body.refreshToken
-
+    console.log("Controller received user:", req.user);
     if (!incomingRefreshToken) {
         throw new ApiError(401, "unauthorized request")
     }
@@ -161,15 +164,16 @@ const refreshAccessToken = asyncHandler(async (req, res) => {
     
         const options = {
             httpOnly: true,
-            secure: true
+            secure: false, // for local
+            sameSite: "lax",
         }
     
-        const {accessToken, newRefreshToken} = await generateAccessAndRefreshTokens(user._id)
+        const {accessToken, refreshToken} = await generateAccessAndRefreshTokens(user._id)
     
         return res
         .status(200)
         .cookie("accessToken", accessToken, options)
-        .cookie("refreshToken", newRefreshToken, options)
+        .cookie("refreshToken", refreshToken, options)
         .json(
             new ApiResponse(
                 200, 
