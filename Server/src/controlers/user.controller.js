@@ -66,7 +66,6 @@ const registerUser = asyncHandler(async (req,res)=>{
 
 const loginUser = asyncHandler(async(req, res)=>{
     const {username, email, password} = req.body;
-    console.log("username", username, "email", email , "password", password)
     if(!username && !email){
         throw new ApiError(400, "UserName or Email is required.")
     }
@@ -93,15 +92,21 @@ const loginUser = asyncHandler(async(req, res)=>{
 
     const loginUser = await User.findById(user?._id).select("-password -refreshToken");
 
-    const option ={
+    const options ={
         httpOnly:true,
-        secure:false, // for local
+        secure:false, 
         sameSite: "lax",
     }
 
     return res.status(200)
-    .cookie("accessToken", accessToken, option)
-    .cookie("refreshToken", refreshToken, option)
+      .cookie("accessToken", accessToken,{
+         ...options,
+        maxAge: 10* 60 * 1000, 
+    })
+    .cookie("refreshToken", refreshToken, {
+         ...options,
+        maxAge: 7 * 24 * 60 * 60 * 1000, 
+    })
     .json(new ApiResponse(200, {user:loginUser, accessToken , refreshToken}, "User login successfully."))
 })
 
@@ -131,8 +136,14 @@ const logoutUser = asyncHandler(async (req, res) => {
 
     return res
         .status(200)
-        .clearCookie("accessToken", options)
-        .clearCookie("refreshToken", options)
+       .cookie("accessToken", accessToken,{
+         ...options,
+        maxAge: 10* 60 * 1000, 
+    })
+    .cookie("refreshToken", refreshToken,{
+         ...options,
+        maxAge: 7 * 24 * 60 * 60 * 1000, 
+    })
         .json(
             new ApiResponse(200, {}, "User logged out successfully.")
         );
@@ -140,7 +151,7 @@ const logoutUser = asyncHandler(async (req, res) => {
 
 const refreshAccessToken = asyncHandler(async (req, res) => {
     const incomingRefreshToken = req.cookies.refreshToken || req.body.refreshToken
-    console.log("Controller received user:", req.user);
+    console.log("Controller received user id:", incomingRefreshToken);
     if (!incomingRefreshToken) {
         throw new ApiError(401, "unauthorized request")
     }
@@ -172,13 +183,19 @@ const refreshAccessToken = asyncHandler(async (req, res) => {
     
         return res
         .status(200)
-        .cookie("accessToken", accessToken, options)
-        .cookie("refreshToken", refreshToken, options)
+         .cookie("accessToken", accessToken,{
+            ...options,
+        maxAge: 10* 60 * 1000, 
+    })
+    .cookie("refreshToken", refreshToken,{
+         ...options,
+        maxAge: 7 * 24 * 60 * 60 * 1000, 
+    })
         .json(
             new ApiResponse(
                 200, 
-                {accessToken, refreshToken: newRefreshToken},
-                "Access token refreshed"
+                {accessToken, refreshToken},
+                "Token refreshed"
             )
         )
     } catch (error) {

@@ -25,6 +25,19 @@ const getHotel = asyncHandler(async (req, res) => {
   }
 });
 
+const getHotelById = asyncHandler(async (req, res) => {
+  const id = req.user?._id || 1;
+
+    const hotel = await Hotel.find({owner: id}).sort({ createdAt: -1 });
+    if (!hotel) {
+      throw new ApiError(404, "Hotel not found");
+    }
+    return res.status(200).json(
+      new ApiResponse(200, hotel, "Hotel retrieved successfully")
+    );
+  
+});
+
 
 const getAllHotels = asyncHandler(async (req, res) => {
   const { location, checkIn, checkOut ,} = req.query;
@@ -231,4 +244,4 @@ const uploadFiles = asyncHandler(async (req, res) => {
     new ApiResponse(200, imageUrls, "Images uploaded successfully."));
 })
 
-export { addHotel, updateHotel, uploadFiles, deleteHotel, getHotel , getAllHotels }
+export { addHotel, updateHotel, uploadFiles, deleteHotel, getHotel , getAllHotels , getHotelById }
